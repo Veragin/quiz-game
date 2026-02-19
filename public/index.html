@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    #status {
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .connected { background: #d4edda; color: #155724; }
+    .disconnected { background: #f8d7da; color: #721c24; }
+    #log {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      background: #f9f9f9;
+    }
+    input, button {
+      padding: 8px 12px;
+      font-size: 1rem;
+    }
+    input { width: 70%; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Quiz Game</h1>
+  <div id="status" class="disconnected">Disconnected</div>
+  <div id="log"></div>
+  <input id="msgInput" type="text" placeholder="Type a message..." />
+  <button onclick="sendMessage()">Send</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+
+    function addLog(text) {
+      const p = document.createElement('p');
+      p.style.margin = '4px 0';
+      p.textContent = text;
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    const socket = io();
+
+    socket.on('connect', () => {
+      statusEl.textContent = 'Connected (id: ' + socket.id + ')';
+      statusEl.className = 'connected';
+      addLog('✅ Connected to server');
+    });
+
+    socket.on('disconnect', () => {
+      statusEl.textContent = 'Disconnected';
+      statusEl.className = 'disconnected';
+      addLog('❌ Disconnected from server');
+    });
+
+    socket.on('connected', (data) => {
+      addLog('Server: ' + data.message);
+    });
+
+    socket.on('message', (data) => {
+      addLog('Echo: ' + data);
+    });
+
+    function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const msg = input.value.trim();
+      if (!msg) return;
+      socket.emit('message', msg, (response) => {
+        addLog('You: ' + msg + ' → Echo: ' + response);
+      });
+      input.value = '';
+    }
+
+    document.getElementById('msgInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
