@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Quiz Game</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 600px;
+                margin: 40px auto;
+            }
+            input,
+            textarea,
+            button {
+                padding: 8px 12px;
+                font-size: 1rem;
+            }
+
+            #login,
+            #quiz,
+            #guessing,
+            #scoreboard {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                justify-content: center;
+                align-items: center;
+            }
+            #nameInput {
+                width: 70%;
+            }
+            #questions {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="login">
+            <h1>Quiz Game</h1>
+            <input id="nameInput" type="text" placeholder="Enter your name" />
+            <button onclick="loginViaInput()">Login</button>
+        </div>
+
+        <div id="quiz" style="display: none">
+            <div id="questions"></div>
+            <button onclick="submitAnswers()">Submit Answers</button>
+        </div>
+
+        <div id="guessing" style="display: none">
+            <div id="state"></div>
+            <div id="question"></div>
+            <div id="guess"></div>
+            <button onclick="sendVote()">Vote</button>
+        </div>
+
+        <div id="scoreboard" style="display: none">
+            <div>Scoreboard</div>
+            <div id="score"></div>
+        </div>
+
+        <script>
+            const answers = {}; // {questionId: answer}
+            let players = []; // {token, name}[]
+            let questions = []; // {questionId, question}[]
+            let votes = []; // token[]
+            let state = 'questions';
+            const ws = new WebSocket('/ws');
+
+            ws.onopen = () => {
+                const authMsg = window.localStorage.getItem('authMsg');
+                if (authMsg) {
+                    login(authMsg);
+                }
+            };
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                console.log('Received message:', msg);
+
+                if (msg.type === 'players') {
+                    players = msg.data;
+                }
+
+                if (msg.type === 'questions') {
+                    const questionsDiv = document.getElementById('questions');
+                    questionsDiv.innerHTML = '';
+                    questions = msg.questions;
+                    msg.questions.forEach((q) => {
+                        const questionDiv = document.createElement('div');
+                        questionDiv.textContent = q.question;
+                        questionsDiv.appendChild(questionDiv);
+                        const input = document.createElement('textarea');
+                        input.id = `answer-${q.questionId}`;
+                        questionsDiv.appendChild(input);
+                        input.value = answers[q.questionId] || '';
+                        input.onchange = (e) => {
+                            const answer = e.target.value;
+                            answers[q.questionId] = answer;
+                        };
+                    });
+                    return;
+                }
+
+                if (msg.type === 'answers') {
+                    Object.assign(answers, msg.answers);
+                    Object.keys(msg.answers).forEach((questionId) => {
+                        const input = document.getElementById(`answer-${questionId}`);
+                        if (input) {
+                            input.value = msg.answers[questionId];
+                        }
+                    });
+                }
+
+                if (msg.type === 'stateChange') {
+                    state = msg.state;
+                    document.getElementById('login').style.display = 'none';
+
+                    if (state === 'questions') {
+                        document.getElementById('quiz').style.display = 'flex';
+                        document.getElementById('guessing').style.display = 'none';
+                        document.getElementById('scoreboard').style.display = 'none';
+                    }
+                    if (state === 'result' || state === 'guessing') {
+                        document.getElementById('quiz').style.display = 'none';
+                        document.getElementById('guessing').style.display = 'flex';
+                        document.getElementById('scoreboard').style.display = 'none';
+                    }
+                    if (state === 'finished') {
+                        document.getElementById('quiz').style.display = 'none';
+                        document.getElementById('guessing').style.display = 'none';
+                        document.getElementById('scoreboard').style.display = 'flex';
+                    }
+                }
+
+                if (msg.type === 'stateChange' && msg.state === 'guessing') {
+                    votes = msg.options.map(() => '');
+                    const stateDiv = document.getElementById('state');
+                    stateDiv.textContent = 'Guess:';
+
+                    const questionDiv = document.getElementById('question');
+                    const question = questions.find((q) => q.questionId === msg.questionId);
+                    questionDiv.textContent = question ? question.question : '';
+
+                    const guessDiv = document.getElementById('guess');
+                    guessDiv.innerHTML = '';
+
+                    msg.options.forEach((option, i) => {
+                        const optionEl = document.createElement('div');
+                        optionEl.textContent = option;
+                        optionEl.style.paddingTop = '16px';
+                        guessDiv.appendChild(optionEl);
+
+                        const optionDiv = document.createElement('div');
+                        optionDiv.id = `option-${i}`;
+                        for (const player of players) {
+                            const playerDiv = document.createElement('input');
+                            playerDiv.type = 'radio';
+                            playerDiv.value = player.token;
+                            playerDiv.name = `option-${i}`;
+                            const label = document.createElement('label');
+                            label.textContent = player.name;
+                            label.appendChild(playerDiv);
+                            label.onclick = () => (votes[i] = player.token);
+                            label.setAttribute('data-player-token', player.token);
+                            optionDiv.appendChild(label);
+                        }
+                        guessDiv.appendChild(optionDiv);
+                    });
+
+                    document.getElementById('guessing').querySelector(`button`).textContent =
+                        'Vote';
+                }
+
+                if (msg.type === 'stateChange' && msg.state === 'result') {
+                    const score = votes.filter((v, i) => v === msg.result[i]).length;
+                    const stateDiv = document.getElementById('state');
+                    stateDiv.textContent = 'Result: ' + score;
+
+                    msg.result.forEach((result, i) => {
+                        const optionDiv = document.getElementById(`option-${i}`);
+                        if (optionDiv) {
+                            const playerLabel = optionDiv.querySelector(
+                                `label[data-player-token="${result}"]`,
+                            );
+                            if (playerLabel) {
+                                playerLabel.style.backgroundColor = 'yellow';
+                            }
+                        }
+                    });
+
+                    document.getElementById('guessing').querySelector(`button`).textContent =
+                        'Next';
+                }
+
+                if (msg.type === 'stateChange' && msg.state === 'finished') {
+                    const scoreDiv = document.getElementById('score');
+                    scoreDiv.innerHTML = '';
+
+                    msg.score.forEach((playerScore) => {
+                        const playerDiv = document.createElement('div');
+                        const player = players.find((p) => p.token === playerScore.token);
+                        playerDiv.textContent = `${player.name}: ${playerScore.score}`;
+                        scoreDiv.appendChild(playerDiv);
+                    });
+                }
+            };
+
+            function loginViaInput() {
+                const nameInput = document.getElementById('nameInput');
+                const name = nameInput.value.trim();
+                if (!name) return;
+
+                const token = Math.random().toString(36).substr(2);
+                const authMsg = JSON.stringify({ type: 'authorization', name, token });
+                login(authMsg);
+            }
+
+            function login(authMsg) {
+                ws.send(authMsg);
+                window.localStorage.setItem('authMsg', authMsg);
+            }
+
+            function submitAnswers() {
+                ws.send(JSON.stringify({ type: 'answers', answers }));
+            }
+
+            function sendVote() {
+                ws.send(
+                    JSON.stringify({ type: 'vote', vote: state === 'guessing' ? votes : null }),
+                );
+            }
+        </script>
+    </body>
+</html>
