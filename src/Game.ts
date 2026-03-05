@@ -97,6 +97,19 @@ export class Game {
     get playerCount() {
         return Object.keys(this.data).length;
     }
+
+    didPlayerVote = (token: string) => {
+        if (this.state === 'questions') {
+            return Object.keys(this.data[token].answers).length === this.questions.length;
+        }
+        if (this.state === 'guessing') {
+            return this.data[token].vote !== null;
+        }
+        if (this.state === 'result') {
+            return this.data[token].vote === null;
+        }
+        return false;
+    };
 }
 
 type TData = {

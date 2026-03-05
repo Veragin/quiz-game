@@ -4,38 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Quiz Game</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                max-width: 600px;
-                margin: 40px auto;
-            }
-            input,
-            textarea,
-            button {
-                padding: 8px 12px;
-                font-size: 1rem;
-            }
-
-            #login,
-            #quiz,
-            #guessing,
-            #scoreboard {
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                justify-content: center;
-                align-items: center;
-            }
-            #nameInput {
-                width: 70%;
-            }
-            #questions {
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-            }
-        </style>
+        <link rel="stylesheet" href="main.css" />
     </head>
 
     <body>
@@ -48,6 +17,7 @@
         <div id="quiz" style="display: none">
             <div id="questions"></div>
             <button onclick="submitAnswers()">Submit Answers</button>
+            <div class="playerVotes tooltip"></div>
         </div>
 
         <div id="guessing" style="display: none">
@@ -55,6 +25,7 @@
             <div id="question"></div>
             <div id="guess"></div>
             <button onclick="sendVote()">Vote</button>
+            <div class="playerVotes tooltip"></div>
         </div>
 
         <div id="scoreboard" style="display: none">
@@ -68,20 +39,34 @@
             let questions = []; // {questionId, question}[]
             let votes = []; // token[]
             let state = 'questions';
-            const ws = new WebSocket('/ws');
 
-            ws.onopen = () => {
-                const authMsg = window.localStorage.getItem('authMsg');
-                if (authMsg) {
-                    login(authMsg);
-                }
-            };
-            ws.onmessage = (event) => {
+            let ws;
+            connectWebSocket();
+
+            function connectWebSocket() {
+                ws = new WebSocket('/ws');
+                ws.onopen = () => {
+                    const authMsg = window.localStorage.getItem('authMsg');
+                    if (authMsg) {
+                        login(authMsg);
+                    }
+                    console.log('WebSocket connected');
+                };
+                ws.onmessage = onMessage;
+                ws.onerror = () => {
+                    console.warn('WebSocket error, reconnecting...');
+                    connectWebSocket();
+                };
+            }
+
+            function onMessage(event) {
                 const msg = JSON.parse(event.data);
                 console.log('Received message:', msg);
 
                 if (msg.type === 'players') {
                     players = msg.data;
+                    renderPlayerVotes();
+                    return;
                 }
 
                 if (msg.type === 'questions') {
@@ -112,6 +97,7 @@
                             input.value = msg.answers[questionId];
                         }
                     });
+                    return;
                 }
 
                 if (msg.type === 'stateChange') {
@@ -161,8 +147,8 @@
                             playerDiv.value = player.token;
                             playerDiv.name = `option-${i}`;
                             const label = document.createElement('label');
-                            label.textContent = player.name;
                             label.appendChild(playerDiv);
+                            label.appendChild(document.createTextNode(player.name));
                             label.onclick = () => (votes[i] = player.token);
                             label.setAttribute('data-player-token', player.token);
                             optionDiv.appendChild(label);
@@ -206,7 +192,7 @@
                         scoreDiv.appendChild(playerDiv);
                     });
                 }
-            };
+            }
 
             function loginViaInput() {
                 const nameInput = document.getElementById('nameInput');
@@ -231,6 +217,26 @@
                 ws.send(
                     JSON.stringify({ type: 'vote', vote: state === 'guessing' ? votes : null }),
                 );
+            }
+
+            function renderPlayerVotes() {
+                const playerVotesDivs = Array.from(document.getElementsByClassName('playerVotes'));
+                const count = players.reduce((acc, player) => acc + (player.voted ? 1 : 0), 0);
+
+                playerVotesDivs.forEach((el) => {
+                    el.innerHTML = `${count} / ${players.length}`;
+
+                    const voteTooltip = document.createElement('div');
+                    voteTooltip.className = 'tooltiptext';
+
+                    players.forEach((player) => {
+                        const voteDiv = document.createElement('div');
+                        voteDiv.textContent = `${player.name}: ${player.voted ? 'Ready' : 'N/A'}`;
+                        voteTooltip.appendChild(voteDiv);
+                    });
+
+                    el.appendChild(voteTooltip);
+                });
             }
         </script>
     </body>

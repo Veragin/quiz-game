@@ -42,6 +42,7 @@ export class ClientManager {
             if (data.type === 'vote') {
                 this.game.vote(msg.token, data.vote);
             }
+            this.sendClientList();
         };
         ws.send(JSON.stringify({ type: 'questions', questions: this.game.questions }));
         this.sendClientList();
@@ -71,6 +72,7 @@ export class ClientManager {
                 data: Object.keys(this.game.data).map((key) => ({
                     token: key,
                     name: this.game.data[key].name,
+                    voted: this.game.didPlayerVote(key),
                 })),
             }),
         );
