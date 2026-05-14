@@ -1,0 +1,16 @@
+services:
+    quiz-game:
+        platform: linux/amd64
+        image: pipeline/dev
+        ports:
+            - 3000:3000
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        volumes:
+            - .:/app
+            - ~/.gitconfig:/home/node/.gitconfig:ro
+        command: tail -f /dev/stdout
+        working_dir: /app
+        user: node
+        tty: true
