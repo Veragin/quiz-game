@@ -9,7 +9,7 @@ import { PublicController } from './Controller';
 @Module({
     imports: [
         ServeStaticModule.forRoot({
-            rootPath: join(__dirname, '..', 'public'),
+            rootPath: join(__dirname, '..', 'public', 'dist'),
         }),
     ],
     providers: [WebsocketGateway, ClientManager, Game],
