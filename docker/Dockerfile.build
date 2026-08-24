@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1
+
+# Build Dockerfile for the quiz game. `make build` runs this with buildkit's local
+# exporter (--target export --output type=local,dest=<rosti>/quiz), so the final
+# `export` stage's filesystem is written straight to the rosti repo. The rosti
+# runtime Dockerfile then just copies that prebuilt tree and starts node.
+
+# ---- Build the client (Vite -> client/dist) ----
+FROM node:22.14.0 AS client-build
+WORKDIR /app/client
+RUN corepack enable
+# Install deps first for better layer caching
+COPY client/package.json client/yarn.lock client/.yarnrc.yml ./
+COPY client/.yarn ./.yarn
+RUN yarn install --immutable
+# The client imports shared types through the src/types symlink -> ../../server/src/types.
+# That target lives outside the client/ context, so make it available here at the path
+# the symlink resolves to (/app/server/src/types); otherwise tsc/vite can't resolve it
+# and `yarn build` emits no dist (the trailing `symlink-resolver clear` masks the failure).
+COPY server/src/types /app/server/src/types
+# The rosti deployment serves this app under /quiz, not the root: one nginx
+# multiplexes several apps onto the stack's single public port by path prefix (see
+# rosti/docker/nginx.conf). PUBLIC_URL becomes Vite's `base`, so asset URLs come
+# out as /quiz/assets/... and import.meta.env.BASE_URL carries the prefix to the
+# router and to socket.io. Override to change the mount point -- but change it in
+# nginx.conf too, the two have to agree, and that location needs long proxy
+# timeouts so socket.io can hold its connection.
+ARG PUBLIC_URL=/quiz
+ENV PUBLIC_URL=$PUBLIC_URL
+# Build (tsc -b && vite build)
+COPY client/ ./
+RUN yarn build
+
+# ---- Build the server (NestJS/tsc -> server/dist) ----
+FROM node:22.14.0 AS server-build
+WORKDIR /app/server
+RUN corepack enable
+COPY server/package.json server/yarn.lock server/.yarnrc.yml ./
+COPY server/.yarn ./.yarn
+RUN yarn install --immutable
+# Build (tsc). tsconfig.tsbuildinfo is intentionally NOT copied in (see .dockerignore)
+# so this is always a clean, full compile.
+COPY server/ ./
+# The default question list lives at the repo root and is read at runtime,
+# relative to the server package -- so it has to travel with it.
+COPY questions.txt ./questions.txt
+RUN yarn build
+
+# ---- Production-only server deps (pruned node_modules for the runtime) ----
+# Separate from server-build (which needs devDeps like typescript/ts-node to
+# compile). `yarn workspaces focus --production` installs only `dependencies`;
+# the workspace-tools plugin is bundled with Yarn 4. Depends only on the
+# manifest/lockfile, so it caches independently of source changes.
+FROM node:22.14.0 AS server-deps-prod
+WORKDIR /app/server
+RUN corepack enable
+COPY server/package.json server/yarn.lock server/.yarnrc.yml ./
+COPY server/.yarn ./.yarn
+RUN yarn workspaces focus --production
+
+# ---- Export: the runtime tree, written to the host via the local exporter ----
+# Lands as <rosti>/quiz/{server,client}/... and is consumed by rosti's
+# docker/Dockerfile with `COPY quiz/ ./`.
+FROM scratch AS export
+# Server runtime: compiled output + pruned (production-only) node_modules + package.json
+COPY --from=server-build /app/server/dist /server/dist
+COPY --from=server-deps-prod /app/server/node_modules /server/node_modules
+COPY --from=server-build /app/server/package.json /server/package.json
+COPY --from=server-build /app/server/questions.txt /server/questions.txt
+# Client: the built SPA, served by the server via ServeStaticModule. Anything in
+# client/public is already folded into dist by Vite, so it needs no separate copy
+# -- unlike Botc, which also ships a public/ tree it writes uploads into at runtime.
+COPY --from=client-build /app/client/dist /client/dist

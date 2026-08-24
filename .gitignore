@@ -4,9 +4,6 @@ node_modules/
 # Build output
 dist/
 
-# Coverage
-coverage/
-
 # IDE
 .idea/
 .vscode/
@@ -19,5 +16,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Large media kept out of the repo
 public/video/
-.docker-build-checksum

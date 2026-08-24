@@ -1,0 +1,32 @@
+{
+    "name": "server",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+        "start": "ts-node src/main.ts",
+        "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+        "build": "tsc",
+        "start:prod": "node dist/main"
+    },
+    "dependencies": {
+        "@nestjs/common": "^11.1.17",
+        "@nestjs/core": "^11.1.17",
+        "@nestjs/platform-express": "^11.1.17",
+        "@nestjs/platform-socket.io": "^11.1.17",
+        "@nestjs/serve-static": "^5.0.5",
+        "@nestjs/websockets": "^11.1.17",
+        "reflect-metadata": "^0.2.2",
+        "rxjs": "^7.8.2",
+        "socket.io": "^4.8.3",
+        "uuid": "^13.0.0"
+    },
+    "devDependencies": {
+        "@nestjs/cli": "^11.0.16",
+        "@types/node": "^25.5.0",
+        "ts-node": "^10.9.2",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.9.3"
+    },
+    "packageManager": "yarn@4.13.0"
+}

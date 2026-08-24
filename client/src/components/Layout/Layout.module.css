@@ -1,0 +1,163 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.header {
+  text-align: center;
+  padding: var(--spacing-lg) var(--spacing-md);
+  background: linear-gradient(180deg, rgba(10, 22, 40, 0.95) 0%, transparent 100%);
+  position: relative;
+  z-index: 10;
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--color-teal), var(--color-sky-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.content {
+  flex: 1;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--spacing-md) var(--spacing-md) 120px;
+  position: relative;
+  z-index: 5;
+}
+
+.contentWide {
+  max-width: 860px;
+}
+
+.wavesContainer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 160px;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: -5%;
+  width: 110%;
+  height: auto;
+  animation: wave 6s ease-in-out infinite;
+}
+
+.wave:nth-child(1) {
+  opacity: 0.7;
+  animation-duration: 6s;
+  bottom: 0;
+}
+
+.wave:nth-child(2) {
+  opacity: 0.4;
+  animation-duration: 8s;
+  animation-delay: -2s;
+  bottom: 10px;
+}
+
+.wave:nth-child(3) {
+  opacity: 0.2;
+  animation-duration: 10s;
+  animation-delay: -4s;
+  bottom: 20px;
+}
+
+.bubblesContainer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -20px;
+  width: 8px;
+  height: 8px;
+  background: rgba(0, 212, 170, 0.3);
+  border-radius: 50%;
+  animation: bubble 8s ease-in infinite;
+}
+
+.bubble:nth-child(1) {
+  left: 10%;
+  animation-delay: 0s;
+  animation-duration: 7s;
+  width: 6px;
+  height: 6px;
+}
+
+.bubble:nth-child(2) {
+  left: 25%;
+  animation-delay: 1.5s;
+  animation-duration: 9s;
+  width: 10px;
+  height: 10px;
+}
+
+.bubble:nth-child(3) {
+  left: 45%;
+  animation-delay: 3s;
+  animation-duration: 8s;
+}
+
+.bubble:nth-child(4) {
+  left: 65%;
+  animation-delay: 4.5s;
+  animation-duration: 10s;
+  width: 5px;
+  height: 5px;
+}
+
+.bubble:nth-child(5) {
+  left: 80%;
+  animation-delay: 2s;
+  animation-duration: 7.5s;
+  width: 7px;
+  height: 7px;
+}
+
+.bubble:nth-child(6) {
+  left: 92%;
+  animation-delay: 5s;
+  animation-duration: 9.5s;
+  width: 9px;
+  height: 9px;
+}
+
+.sharkFin {
+  position: fixed;
+  bottom: 80px;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: sharkSwim 20s linear infinite;
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: var(--spacing-sm) var(--spacing-sm) 120px;
+  }
+
+  .title {
+    font-size: var(--font-size-xl);
+  }
+}
