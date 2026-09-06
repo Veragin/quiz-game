@@ -21,3 +21,6 @@ npm-debug.log*
 
 # Large media kept out of the repo
 public/video/
+
+# Question list staged into the build context by `make build` (see Makefile)
+docker/questions.build.txt

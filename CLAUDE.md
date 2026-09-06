@@ -19,7 +19,7 @@ client/            Vite + React 19 + mobx + react-router (dev port 5174)
   src/pages/       LoginPage, RoomsPage, RoomPage
   src/components/  Prepare, Answering, Guessing, Reveal, Scoreboard, ...
 docker/            Dockerfile.dev (dev container), Dockerfile.build (deploy)
-questions.txt      default question list, read once at boot
+questions.txt      default question list, read once at boot (dev)
 ```
 
 Two independent yarn packages — there is no root `package.json`. Run `yarn` in
@@ -32,6 +32,16 @@ server-side file; the client sees the change automatically. `yarn build` in the
 client runs `symlink-resolver` around the build because Vite/tsc cannot follow
 the symlink out of the package (and `docker/Dockerfile.build` copies
 `server/src/types` into the client stage for the same reason).
+
+## Question list
+
+The server reads its default questions from a `questions.txt` sitting next to
+the server package (or at the repo root in dev). `make build` does **not** ship
+the repo's copy: it stages `$(QUESTIONS_SRC)` — `../admin/config/quiz.env`, one
+question per line — into the build context as `docker/questions.build.txt` (git-
+ignored, removed again after the build), because the admin repo is outside the
+docker build context. Missing that file is a warning, not an error: the build
+falls back to the repo-root `questions.txt`.
 
 ## Commands
 

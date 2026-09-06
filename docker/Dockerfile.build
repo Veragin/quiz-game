@@ -41,9 +41,11 @@ RUN yarn install --immutable
 # Build (tsc). tsconfig.tsbuildinfo is intentionally NOT copied in (see .dockerignore)
 # so this is always a clean, full compile.
 COPY server/ ./
-# The default question list lives at the repo root and is read at runtime,
-# relative to the server package -- so it has to travel with it.
-COPY questions.txt ./questions.txt
+# The default question list is read at runtime, relative to the server package --
+# so it has to travel with it. `make build` stages it here from
+# ../admin/config/quiz.env (falling back to the repo-root questions.txt), since
+# the admin repo sits outside the build context and cannot be COPYed directly.
+COPY docker/questions.build.txt ./questions.txt
 RUN yarn build
 
 # ---- Production-only server deps (pruned node_modules for the runtime) ----

@@ -7,6 +7,16 @@ COMPOSE = docker compose
 ROSTI_DIR ?= ../rosti
 QUIZ_OUT = $(ROSTI_DIR)/quiz
 
+# The question list that gets baked into the deploy tree lives outside the repo,
+# next to the other per-app configs in the admin repo (one question per line,
+# same format as questions.txt). docker cannot COPY from outside the build
+# context, so `build` stages it into the context first and drops it afterwards.
+# The repo-root questions.txt is the fallback, so the build still works on a
+# checkout without ../admin.
+ADMIN_DIR ?= ../admin
+QUESTIONS_SRC ?= $(ADMIN_DIR)/config/quiz.env
+QUESTIONS_STAGED = docker/questions.build.txt
+
 # Git author for commits made inside the container. Read from the host's git
 # config unless already set in the environment.
 GIT_USER_NAME ?= $(shell git config user.name)
@@ -60,11 +70,19 @@ endef
 
 build:
 	rm -rf $(QUIZ_OUT)
+	@if [ -f "$(QUESTIONS_SRC)" ]; then \
+		cp "$(QUESTIONS_SRC)" $(QUESTIONS_STAGED); \
+		echo "Questions: $(QUESTIONS_SRC)"; \
+	else \
+		cp questions.txt $(QUESTIONS_STAGED); \
+		printf "\033[0;33mWarning: $(QUESTIONS_SRC) not found, using repo-root questions.txt\033[0m\n"; \
+	fi
 	DOCKER_BUILDKIT=1 docker build \
 		--target export \
 		--output type=local,dest=$(QUIZ_OUT) \
 		-f docker/Dockerfile.build \
-		.
+		. ; \
+	status=$$?; rm -f $(QUESTIONS_STAGED); exit $$status
 
 start: stop
 	$(COMPOSE) up -d --build --remove-orphans

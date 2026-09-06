@@ -6,7 +6,9 @@ import { TQuestion } from '../types';
 /**
  * questions.txt lives at the repo root next to the two packages in dev, and is
  * copied next to the compiled server in the deploy tree (see
- * docker/Dockerfile.build) -- so both layouts are tried, in that order.
+ * docker/Dockerfile.build) -- so both layouts are tried, in that order. In the
+ * deploy tree the content comes from ../admin/config/quiz.env, which `make
+ * build` stages into the build context; the file name stays questions.txt here.
  *
  * __dirname is server/src/game under ts-node and server/dist/game after tsc.
  */
